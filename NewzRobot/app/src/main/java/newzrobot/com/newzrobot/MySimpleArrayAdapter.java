@@ -46,6 +46,8 @@ public class MySimpleArrayAdapter extends ArrayAdapter<NewsItem> {
             txt_title.setText(p.getTitle());
         }
 
+        v.setTag(0, p.getLink());
+
 
         return v;
     }

@@ -4,14 +4,35 @@ package newzrobot.com.newzrobot;
  * Created by mahdi on 12/8/15.
  */
 public class NewsItem {
-    private long id;
-    private String content;
+    private String link;
+    private String title;
+    private String source;
+    private long timestamp;
 
-    public long getId() {
-        return this.id;
+    public NewsItem() {
+
     }
 
-    public String getContent() {
-        return this.content;
+    public NewsItem(String link, String title, String source, long timestamp) {
+        this.link = link;
+        this.title = title;
+        this.source = source;
+        this.timestamp = timestamp;
+    }
+
+    public String getLink() {
+        return link;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
     }
 }

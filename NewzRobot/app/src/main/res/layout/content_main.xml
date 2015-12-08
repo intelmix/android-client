@@ -12,9 +12,18 @@
     tools:context="newzrobot.com.newzrobot.MainActivity"
     tools:showIn="@layout/activity_main">
 
-    <EditText android:id="@+id/edit_message"
-        android:layout_width="match_parent"
+
+    <ListView
+        android:id="@+id/list"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
-        android:hint="Enter a message" />
+        android:layout_width="match_parent">
+    </ListView>
+
+    <!--<EditText android:id="@+id/edit_message"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:text="Hello World!"-->
+        <!--android:hint="Enter a message" />-->
+
+
 </RelativeLayout>

@@ -1,5 +1,6 @@
 package newzrobot.com.newzrobot;
 
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -10,13 +11,23 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.GridLayout;
+import android.widget.ListView;
+import android.widget.TableLayout;
+import android.widget.TableRow;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
 public class MainActivity extends AppCompatActivity {
+
+    ListView listView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,13 +44,50 @@ public class MainActivity extends AppCompatActivity {
                         .setAction("Action", null).show();
             }
         });
+
+
+       listView = (ListView) findViewById(R.id.list);
+//        NewsItem[] greeting = new NewsItem[3];
+//        greeting[0] = new NewsItem("A", "B", "C", 1);
+//        greeting[1] = new NewsItem("A1", "B1", "C1", 2);
+//        greeting[2] = new NewsItem("A2", "B2", "C2", 3);
+//
+//        MySimpleArrayAdapter adapter = new MySimpleArrayAdapter(this, greeting);
+//
+//        // Assign adapter to ListView
+//        listView.setAdapter(adapter);
+
+
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view,
+                                    int position, long id) {
+
+                // ListView Clicked item index
+                int itemPosition = position;
+
+                // ListView Clicked item value
+                NewsItem itemValue = (NewsItem) listView.getItemAtPosition(position);
+
+                // Show Alert
+                Toast.makeText(getApplicationContext(),
+                        "Position :" + itemPosition + "  ListItem : " + itemValue.getLink(), Toast.LENGTH_LONG)
+                        .show();
+
+            }
+
+        });
+
+
     }
 
     @Override
     protected void onStart() {
         super.onStart();
 
-        new HttpRequestTask().execute();
+        new HttpRequestTask(this).execute();
     }
 
 
@@ -67,6 +115,14 @@ public class MainActivity extends AppCompatActivity {
 
 
     private class HttpRequestTask extends AsyncTask<Void, Void, NewsItem[]> {
+
+        private MainActivity activity;
+
+        public HttpRequestTask(MainActivity a)
+        {
+            this.activity = a;
+        }
+
         @Override
         protected NewsItem[] doInBackground(Void... params) {
             try {
@@ -84,9 +140,14 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(NewsItem[] greeting) {
-            EditText ed = (EditText) findViewById(R.id.edit_message);
-            ed.setText("ID is " + greeting[0].getId()+" and content is "+greeting[0].getContent()+
-                    "second ID is "+greeting[1].getId()+" and second content is "+greeting[1].getContent());
+//            EditText ed = (EditText) findViewById(R.id.edit_message);
+//            ed.setText("Link is " + greeting[0].getLink()+" and title is "+greeting[0].getTitle()+
+//                    "second ID is "+greeting[1].getLink()+" and second content is "+greeting[1].getTitle());
+
+            MySimpleArrayAdapter adapter = new MySimpleArrayAdapter(activity, R.layout.itemlistrow, greeting);
+
+            // Assign adapter to ListView
+            listView.setAdapter(adapter);
 
         }
 

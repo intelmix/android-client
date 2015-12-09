@@ -34,20 +34,17 @@ public class MySimpleArrayAdapter extends ArrayAdapter<NewsItem> {
         }
 
         if (p != null) {
-            TextView txt_link = (TextView) v.findViewById(R.id.news_link);
             TextView txt_source = (TextView) v.findViewById(R.id.news_source);
             TextView txt_ts = (TextView) v.findViewById(R.id.news_timestamp);
             TextView txt_title = (TextView) v.findViewById(R.id.news_title);
 
-            txt_link.setText(p.getLink());
             txt_source.setText(p.getSource());
             txt_ts.setText(Long.toString(p.getTimestamp()));
             txt_ts.setText(Long.toString(p.getTimestamp()));
             txt_title.setText(p.getTitle());
+
+            v.setTag(p.getLink());
         }
-
-        v.setTag(0, p.getLink());
-
 
         return v;
     }

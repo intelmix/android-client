@@ -1,12 +1,16 @@
 package newzrobot.com.newzrobot;
 
+import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
@@ -28,24 +32,17 @@ import org.springframework.web.client.RestTemplate;
 public class MainActivity extends AppCompatActivity {
 
     ListView listView;
+    MainActivity me = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        me = this;
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-
-
+//        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+//        setSupportActionBar(toolbar);
+//
        listView = (ListView) findViewById(R.id.list);
 //        NewsItem[] greeting = new NewsItem[3];
 //        greeting[0] = new NewsItem("A", "B", "C", 1);
@@ -68,28 +65,64 @@ public class MainActivity extends AppCompatActivity {
                 // ListView Clicked item index
                 int itemPosition = position;
 
+                String link = view.getTag().toString();
                 // ListView Clicked item value
                 NewsItem itemValue = (NewsItem) listView.getItemAtPosition(position);
 
-                // Show Alert
-                Toast.makeText(getApplicationContext(),
-                        "Position :" + itemPosition + "  ListItem : " + itemValue.getLink(), Toast.LENGTH_LONG)
-                        .show();
+                Intent i = new Intent(Intent.ACTION_VIEW);
+                i.setData(Uri.parse(link));
+                startActivity(i);
+//
+//                // Show Alert
+//                Toast.makeText(getApplicationContext(),
+//                        "Position :" + itemPosition + "  ListItem : " + itemValue.getLink(), Toast.LENGTH_LONG)
+//                        .show();
+
 
             }
 
         });
 
 
+        EditText searchBox = (EditText) findViewById(R.id.search_box);
+
+        searchBox.addTextChangedListener(new TextWatcher() {
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                String searchText = s.toString().trim();
+
+                if ( searchText.length() == 0 ) searchText = null;
+
+                new HttpRequestTask(me, searchText).execute();
+            }
+
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                //TODO: query from server and update list item views
+            }
+        });
     }
 
     @Override
     protected void onStart() {
         super.onStart();
 
-        new HttpRequestTask(this).execute();
+        new HttpRequestTask(this, null).execute();
     }
 
+//    static final int REQUEST_CODE_PICK_ACCOUNT = 1000;
+//
+//    private void pickUserAccount() {
+//        String[] accountTypes = new String[]{"com.google"};
+//        Intent intent = AccountPicker.newChooseAccountIntent(null, null,
+//                accountTypes, false, null, null, null, null);
+//        startActivityForResult(intent, REQUEST_CODE_PICK_ACCOUNT);
+//    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -117,16 +150,23 @@ public class MainActivity extends AppCompatActivity {
     private class HttpRequestTask extends AsyncTask<Void, Void, NewsItem[]> {
 
         private MainActivity activity;
+        private String searchText;
 
-        public HttpRequestTask(MainActivity a)
+        public HttpRequestTask(MainActivity a, String searchText)
         {
             this.activity = a;
+            this.searchText = searchText;
         }
 
         @Override
         protected NewsItem[] doInBackground(Void... params) {
             try {
-                final String url = "http://newzrobot.com:8090/news?name=AndroidClient";
+                String url = "http://newzrobot.com:8090/news";
+
+                if ( searchText != null ) {
+                    url = "http://newzrobot.com:8090/search/"+searchText;
+                }
+
                 RestTemplate restTemplate = new RestTemplate();
                 restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
                 NewsItem[] result = restTemplate.getForObject(url, NewsItem[].class);

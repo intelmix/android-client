@@ -1,7 +1,12 @@
 package newzrobot.com.newzrobot;
 
+import android.accounts.AccountManager;
+import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -18,16 +23,22 @@ import android.view.MenuItem;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.GridLayout;
 import android.widget.ListView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.auth.GoogleAuthException;
+import com.google.android.gms.auth.GoogleAuthUtil;
+import com.google.android.gms.auth.UserRecoverableAuthException;
+import com.google.android.gms.common.AccountPicker;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
+
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -43,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
 //        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 //        setSupportActionBar(toolbar);
 //
-       listView = (ListView) findViewById(R.id.list);
+        listView = (ListView) findViewById(R.id.list);
 //        NewsItem[] greeting = new NewsItem[3];
 //        greeting[0] = new NewsItem("A", "B", "C", 1);
 //        greeting[1] = new NewsItem("A1", "B1", "C1", 2);
@@ -112,17 +123,66 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        pickUserAccount();
+
         new HttpRequestTask(this, null).execute();
     }
 
-//    static final int REQUEST_CODE_PICK_ACCOUNT = 1000;
-//
-//    private void pickUserAccount() {
-//        String[] accountTypes = new String[]{"com.google"};
-//        Intent intent = AccountPicker.newChooseAccountIntent(null, null,
-//                accountTypes, false, null, null, null, null);
-//        startActivityForResult(intent, REQUEST_CODE_PICK_ACCOUNT);
-//    }
+    String mEmail; // Received from newChooseAccountIntent(); passed to getToken()
+    String SCOPE = "oauth2:https://www.googleapis.com/auth/userinfo.profile";
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE_PICK_ACCOUNT) {
+            // Receiving a result from the AccountPicker
+            if (resultCode == RESULT_OK) {
+                mEmail = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+                // With the account name acquired, go get the auth token
+                getUsername();
+            } else if (resultCode == RESULT_CANCELED) {
+                // The account picker dialog closed without selecting an account.
+                // Notify users that they must pick an account to proceed.
+                Toast.makeText(this, "R.string.pick_account", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /** Checks whether the device currently has a network connection */
+    private boolean isDeviceOnline() {
+        ConnectivityManager connMgr = (ConnectivityManager)
+                getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        if (networkInfo != null && networkInfo.isConnected()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Attempts to retrieve the username.
+     * If the account is not yet known, invoke the picker. Once the account is known,
+     * start an instance of the AsyncTask to get the auth token and do work with it.
+     */
+    private void getUsername() {
+        if (mEmail == null) {
+            pickUserAccount();
+        } else {
+            if (isDeviceOnline()) {
+                new GetUsernameTask(MainActivity.this, mEmail, SCOPE).execute();
+            } else {
+                Toast.makeText(this, "R.string.not_online", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    static final int REQUEST_CODE_PICK_ACCOUNT = 1000;
+
+    private void pickUserAccount() {
+        String[] accountTypes = new String[]{"com.google"};
+        Intent intent = AccountPicker.newChooseAccountIntent(null, null,
+                accountTypes, false, null, null, null, null);
+        startActivityForResult(intent, REQUEST_CODE_PICK_ACCOUNT);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -191,5 +251,56 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
+    }
+
+    public class GetUsernameTask extends AsyncTask<Void, Void, Void> {
+        Activity mActivity;
+        String mScope;
+        String mEmail;
+
+        GetUsernameTask(Activity activity, String name, String scope) {
+            this.mActivity = activity;
+            this.mScope = scope;
+            this.mEmail = name;
+        }
+
+        /**
+         * Executes the asynchronous job. This runs when you call execute()
+         * on the AsyncTask instance.
+         */
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                String token = fetchToken();
+                if (token != null) {
+                    // **Insert the good stuff here.**
+                    // Use the token to access the user's Google data.
+                    int g = 12;
+                }
+            } catch (IOException e) {
+                // The fetchToken() method handles Google-specific exceptions,
+                // so this indicates something went wrong at a higher level.
+                // TIP: Check for network connectivity before starting the AsyncTask.
+            }
+            return null;
+        }
+
+        /**
+         * Gets an authentication token from Google and handles any
+         * GoogleAuthException that may occur.
+         */
+        protected String fetchToken() throws IOException {
+            try {
+                return GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
+            } catch (UserRecoverableAuthException userRecoverableException) {
+                // GooglePlayServices.apk is either old, disabled, or not present
+                // so we need to show the user some UI in the activity to recover.
+                //mActivity.handleException(userRecoverableException);
+            } catch (GoogleAuthException fatalException) {
+                // Some other type of unrecoverable exception has occurred.
+                // Report and log the error as appropriate for your app.
+            }
+            return null;
+        }
     }
 }

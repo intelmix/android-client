@@ -181,6 +181,9 @@ public class MainActivity extends AppCompatActivity {
         String[] accountTypes = new String[]{"com.google"};
         Intent intent = AccountPicker.newChooseAccountIntent(null, null,
                 accountTypes, false, null, null, null, null);
+
+        intent.addCategory("android.intent.category.DEFAULT");
+
         startActivityForResult(intent, REQUEST_CODE_PICK_ACCOUNT);
     }
 

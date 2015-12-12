@@ -123,9 +123,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
-        pickUserAccount();
-
+        //pickUserAccount();
         new HttpRequestTask(this, null).execute();
+
     }
 
     String mEmail; // Received from newChooseAccountIntent(); passed to getToken()
@@ -139,10 +139,24 @@ public class MainActivity extends AppCompatActivity {
                 mEmail = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
                 // With the account name acquired, go get the auth token
                 getUsername();
+                //new HttpRequestTask(this, null).execute();
             } else if (resultCode == RESULT_CANCELED) {
                 // The account picker dialog closed without selecting an account.
                 // Notify users that they must pick an account to proceed.
                 Toast.makeText(this, "R.string.pick_account", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        if ( requestCode == REQUEST_AUTHORIZATION ) {
+            String x = data.getDataString();
+            try {
+                String token = GoogleAuthUtil.getToken(this, mEmail, SCOPE);
+
+                //here we have the token
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (GoogleAuthException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -176,6 +190,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     static final int REQUEST_CODE_PICK_ACCOUNT = 1000;
+    static final int REQUEST_AUTHORIZATION = 12121;
 
     private void pickUserAccount() {
         String[] accountTypes = new String[]{"com.google"};
@@ -260,6 +275,7 @@ public class MainActivity extends AppCompatActivity {
         Activity mActivity;
         String mScope;
         String mEmail;
+        String temp;
 
         GetUsernameTask(Activity activity, String name, String scope) {
             this.mActivity = activity;
@@ -274,11 +290,16 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected Void doInBackground(Void... params) {
             try {
-                String token = fetchToken();
+                String token = null;
+                try {
+                    token = fetchToken();
+                } catch (GoogleAuthException e) {
+                    e.printStackTrace();
+                }
                 if (token != null) {
                     // **Insert the good stuff here.**
                     // Use the token to access the user's Google data.
-                    int g = 12;
+                    temp = "12";
                 }
             } catch (IOException e) {
                 // The fetchToken() method handles Google-specific exceptions,
@@ -292,16 +313,21 @@ public class MainActivity extends AppCompatActivity {
          * Gets an authentication token from Google and handles any
          * GoogleAuthException that may occur.
          */
-        protected String fetchToken() throws IOException {
+        protected String fetchToken() throws IOException, GoogleAuthException {
             try {
-                return GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
-            } catch (UserRecoverableAuthException userRecoverableException) {
+                String token = GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
+                return token;
+            } catch (UserRecoverableAuthException e) {
                 // GooglePlayServices.apk is either old, disabled, or not present
                 // so we need to show the user some UI in the activity to recover.
                 //mActivity.handleException(userRecoverableException);
+                temp = "12";
+                startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
+                //String token2 = GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
             } catch (GoogleAuthException fatalException) {
                 // Some other type of unrecoverable exception has occurred.
                 // Report and log the error as appropriate for your app.
+                temp = "12";
             }
             return null;
         }

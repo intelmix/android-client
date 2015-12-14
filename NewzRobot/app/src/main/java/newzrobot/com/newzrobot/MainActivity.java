@@ -34,6 +34,10 @@ import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.common.AccountPicker;
 
+import org.springframework.http.HttpAuthentication;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
@@ -75,8 +79,8 @@ public class MainActivity extends AppCompatActivity {
 
                 // ListView Clicked item index
                 int itemPosition = position;
-
                 String link = view.getTag().toString();
+
                 // ListView Clicked item value
                 NewsItem itemValue = (NewsItem) listView.getItemAtPosition(position);
 
@@ -123,8 +127,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
-        //pickUserAccount();
-        new HttpRequestTask(this, null).execute();
+        pickUserAccount();
+        //new HttpRequestTask(this, null).execute();
 
     }
 
@@ -139,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
                 mEmail = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
                 // With the account name acquired, go get the auth token
                 getUsername();
+
                 //new HttpRequestTask(this, null).execute();
             } else if (resultCode == RESULT_CANCELED) {
                 // The account picker dialog closed without selecting an account.
@@ -149,15 +154,11 @@ public class MainActivity extends AppCompatActivity {
 
         if ( requestCode == REQUEST_AUTHORIZATION ) {
             String x = data.getDataString();
-            try {
-                String token = GoogleAuthUtil.getToken(this, mEmail, SCOPE);
 
-                //here we have the token
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (GoogleAuthException e) {
-                e.printStackTrace();
-            }
+            //again try to get the access token now that app is authorized by the user
+            new GetUsernameTask(MainActivity.this, mEmail, SCOPE).execute();
+            //String token = GoogleAuthUtil.getToken(this, mEmail, SCOPE);
+
         }
     }
 
@@ -271,7 +272,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public class GetUsernameTask extends AsyncTask<Void, Void, Void> {
+    public class GetUsernameTask extends AsyncTask<Void, Void, String> {
         Activity mActivity;
         String mScope;
         String mEmail;
@@ -288,9 +289,9 @@ public class MainActivity extends AppCompatActivity {
          * on the AsyncTask instance.
          */
         @Override
-        protected Void doInBackground(Void... params) {
+        protected String doInBackground(Void... params) {
+            String token = null;
             try {
-                String token = null;
                 try {
                     token = fetchToken();
                 } catch (GoogleAuthException e) {
@@ -306,7 +307,7 @@ public class MainActivity extends AppCompatActivity {
                 // so this indicates something went wrong at a higher level.
                 // TIP: Check for network connectivity before starting the AsyncTask.
             }
-            return null;
+            return token;
         }
 
         /**
@@ -322,6 +323,9 @@ public class MainActivity extends AppCompatActivity {
                 // so we need to show the user some UI in the activity to recover.
                 //mActivity.handleException(userRecoverableException);
                 temp = "12";
+
+                //this will happen only on the first ever time this app requires
+                //authentication from user
                 startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
                 //String token2 = GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
             } catch (GoogleAuthException fatalException) {
@@ -330,6 +334,61 @@ public class MainActivity extends AppCompatActivity {
                 temp = "12";
             }
             return null;
+        }
+
+        @Override
+        protected void onPostExecute(String token) {
+            new RegisterUserTask(mActivity, token).execute();
+        }
+
+    }
+
+
+    private class RegisterUserTask extends AsyncTask<Void, Void, Void> {
+
+        private Activity activity;
+        private String token;
+        private String resString;
+
+        public RegisterUserTask(Activity a, String token)
+        {
+            this.activity = a;
+            this.token = token;
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                String url = "http://newzrobot.com:8090/register";
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("Authorization", "Bearer " + token);
+
+                RestTemplate restTemplate = new RestTemplate();
+                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+                HttpEntity<String> entity = new HttpEntity<String>(headers);
+
+                ResponseEntity<String> result = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+                resString = result.getBody();
+
+                Toast.makeText(getApplicationContext(),
+                        resString, Toast.LENGTH_LONG)
+                        .show();
+
+            } catch (Exception e) {
+                resString = e.getMessage();
+
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            Toast.makeText(getApplicationContext(),
+                    resString, Toast.LENGTH_LONG)
+                    .show();
         }
     }
 }

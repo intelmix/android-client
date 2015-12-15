@@ -137,7 +137,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     String mEmail; // Received from newChooseAccountIntent(); passed to getToken()
-    String SCOPE = "oauth2:https://www.googleapis.com/auth/userinfo.profile";
+    //String SCOPE = "oauth2:https://www.googleapis.com/auth/userinfo.profile";
+    String SCOPE = "oauth2:https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email";
     public static final String MyPREFERENCES = "MyPrefs" ;
 
     @Override
@@ -294,6 +295,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    //TODO: change name of this and move all classes to other files
     public class GetUsernameTask extends AsyncTask<Void, Void, String> {
         Activity mActivity;
         String mScope;
@@ -339,6 +341,7 @@ public class MainActivity extends AppCompatActivity {
         protected String fetchToken() throws IOException, GoogleAuthException {
             try {
                 String token = GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
+                this.mEmail = this.mEmail;
                 return token;
             } catch (UserRecoverableAuthException e) {
                 // GooglePlayServices.apk is either old, disabled, or not present

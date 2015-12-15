@@ -35,7 +35,7 @@ dependencies {
     compile 'org.springframework.android:spring-android-rest-template:1.0.1.RELEASE'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.3.2'
     compile 'com.google.android.gms:play-services-identity:8.3.0'
-    compile 'com.google.android.gms:play-services:8.3.0'
+    //compile 'com.google.android.gms:play-services:8.3.0'
     // Change as per the latest dependency
     // http://stackoverflow.com/questions/32889059/android-studio-1-4-and-vector-image/32889565#32889565
     //compile 'com.android.support:multidex:1.0.1'

@@ -4,6 +4,7 @@ import android.accounts.AccountManager;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -41,6 +42,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
+
+
 
 import java.io.IOException;
 
@@ -127,6 +130,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        //TODO: better UI handling upon start
         pickUserAccount();
         //new HttpRequestTask(this, null).execute();
 
@@ -134,6 +138,7 @@ public class MainActivity extends AppCompatActivity {
 
     String mEmail; // Received from newChooseAccountIntent(); passed to getToken()
     String SCOPE = "oauth2:https://www.googleapis.com/auth/userinfo.profile";
+    public static final String MyPREFERENCES = "MyPrefs" ;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -141,6 +146,12 @@ public class MainActivity extends AppCompatActivity {
             // Receiving a result from the AccountPicker
             if (resultCode == RESULT_OK) {
                 mEmail = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
+
+                SharedPreferences prefs = this.getSharedPreferences(MyPREFERENCES, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putString("default_account", mEmail);
+                editor.commit();
+
                 // With the account name acquired, go get the auth token
                 getUsername();
 
@@ -178,6 +189,7 @@ public class MainActivity extends AppCompatActivity {
      * If the account is not yet known, invoke the picker. Once the account is known,
      * start an instance of the AsyncTask to get the auth token and do work with it.
      */
+    //TOTO: Get user token
     private void getUsername() {
         if (mEmail == null) {
             pickUserAccount();
@@ -200,7 +212,17 @@ public class MainActivity extends AppCompatActivity {
 
         intent.addCategory("android.intent.category.DEFAULT");
 
-        startActivityForResult(intent, REQUEST_CODE_PICK_ACCOUNT);
+        SharedPreferences prefs = this.getSharedPreferences(MyPREFERENCES, Context.MODE_PRIVATE);
+        String defaultAccount = prefs.getString("default_account", null);
+
+        if ( defaultAccount == null ) {
+            startActivityForResult(intent, REQUEST_CODE_PICK_ACCOUNT);
+        } else {
+            mEmail = defaultAccount;
+            getUsername();
+        }
+
+
     }
 
     @Override
@@ -344,6 +366,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    //TODO: RegisterOrLogin user
     private class RegisterUserTask extends AsyncTask<Void, Void, Void> {
 
         private Activity activity;
@@ -356,26 +379,20 @@ public class MainActivity extends AppCompatActivity {
             this.token = token;
         }
 
+        //TODO: start caching expensive data items
+        //TODO: change namespaces include intelmix on android and server
         @Override
         protected Void doInBackground(Void... params) {
             try {
                 String url = "http://newzrobot.com:8090/register";
 
-                HttpHeaders headers = new HttpHeaders();
-                headers.set("Authorization", "Bearer " + token);
+                AuthRequest ar = new AuthRequest();
+                ar.setToken(this.token);
 
                 RestTemplate restTemplate = new RestTemplate();
                 restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
-                HttpEntity<String> entity = new HttpEntity<String>(headers);
 
-                ResponseEntity<String> result = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-                resString = result.getBody();
-
-                Toast.makeText(getApplicationContext(),
-                        resString, Toast.LENGTH_LONG)
-                        .show();
-
+                resString = restTemplate.postForObject(url, ar, String.class);
             } catch (Exception e) {
                 resString = e.getMessage();
 

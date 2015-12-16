@@ -395,7 +395,8 @@ public class MainActivity extends AppCompatActivity {
                 RestTemplate restTemplate = new RestTemplate();
                 restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
 
-                resString = restTemplate.postForObject(url, ar, String.class);
+                AuthResponse result = restTemplate.postForObject(url, ar, AuthResponse.class);
+                resString = result.getToken();
             } catch (Exception e) {
                 resString = e.getMessage();
 

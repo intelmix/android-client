@@ -1,4 +1,4 @@
-package newzrobot.com.newzrobot;
+package newzrobot.com.newzrobot.data;
 
 /**
  * Created by mahdi on 12/15/15.

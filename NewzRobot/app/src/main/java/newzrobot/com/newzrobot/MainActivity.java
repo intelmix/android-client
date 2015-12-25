@@ -1,51 +1,29 @@
 package newzrobot.com.newzrobot;
 
 import android.accounts.AccountManager;
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TableLayout;
-import android.widget.TableRow;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.auth.GoogleAuthException;
-import com.google.android.gms.auth.GoogleAuthUtil;
-import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.common.AccountPicker;
 
-import org.springframework.http.HttpAuthentication;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.web.client.RestTemplate;
 
-
-
-import java.io.IOException;
+import newzrobot.com.newzrobot.data.NewsItem;
+import newzrobot.com.newzrobot.tasks.*;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -117,11 +95,10 @@ public class MainActivity extends AppCompatActivity {
 
                 if ( searchText.length() == 0 ) searchText = null;
 
-                new HttpRequestTask(me, searchText).execute();
+                new GetNewsTask(me, searchText).execute();
             }
 
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                //TODO: query from server and update list item views
             }
         });
     }
@@ -156,7 +133,7 @@ public class MainActivity extends AppCompatActivity {
                 // With the account name acquired, go get the auth token
                 getUsername();
 
-                //new HttpRequestTask(this, null).execute();
+                //new GetNewsTask(this, null).execute();
             } else if (resultCode == RESULT_CANCELED) {
                 // The account picker dialog closed without selecting an account.
                 // Notify users that they must pick an account to proceed.
@@ -168,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
             String x = data.getDataString();
 
             //again try to get the access token now that app is authorized by the user
-            new GetUsernameTask(MainActivity.this, mEmail, SCOPE).execute();
+            new GetUserTokenTask(MainActivity.this, mEmail, SCOPE).execute();
             //String token = GoogleAuthUtil.getToken(this, mEmail, SCOPE);
 
         }
@@ -196,15 +173,15 @@ public class MainActivity extends AppCompatActivity {
             pickUserAccount();
         } else {
             if (isDeviceOnline()) {
-                new GetUsernameTask(MainActivity.this, mEmail, SCOPE).execute();
+                new GetUserTokenTask(MainActivity.this, mEmail, SCOPE).execute();
             } else {
                 Toast.makeText(this, "R.string.not_online", Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    static final int REQUEST_CODE_PICK_ACCOUNT = 1000;
-    static final int REQUEST_AUTHORIZATION = 12121;
+    public static final int REQUEST_CODE_PICK_ACCOUNT = 1000;
+    public static final int REQUEST_AUTHORIZATION = 12121;
 
     private void pickUserAccount() {
         String[] accountTypes = new String[]{"com.google"};
@@ -249,203 +226,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private class HttpRequestTask extends AsyncTask<Void, Void, NewsItem[]> {
-
-        private MainActivity activity;
-        private String searchText;
-
-        public HttpRequestTask(MainActivity a, String searchText)
-        {
-            this.activity = a;
-            this.searchText = searchText;
-        }
-
-        @Override
-        protected NewsItem[] doInBackground(Void... params) {
-            try {
-                String url = "http://newzrobot.com:8090/news";
-
-                if ( searchText != null ) {
-                    url = "http://newzrobot.com:8090/search/"+searchText;
-                }
-
-                RestTemplate restTemplate = new RestTemplate();
-                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
-                NewsItem[] result = restTemplate.getForObject(url, NewsItem[].class);
-
-                return result;
-            } catch (Exception e) {
-                Log.e("MainActivity", e.getMessage(), e);
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(NewsItem[] greeting) {
-//            EditText ed = (EditText) findViewById(R.id.edit_message);
-//            ed.setText("Link is " + greeting[0].getLink()+" and title is "+greeting[0].getTitle()+
-//                    "second ID is "+greeting[1].getLink()+" and second content is "+greeting[1].getTitle());
-
-            MySimpleArrayAdapter adapter = new MySimpleArrayAdapter(activity, R.layout.itemlistrow, greeting);
-
-            // Assign adapter to ListView
-            listView.setAdapter(adapter);
-
-        }
-
-    }
-
-    private class GetNewsCountTask extends AsyncTask<Void, Void, Integer> {
-
-        private MainActivity activity;
-
-        public GetNewsCountTask(MainActivity a)
-        {
-            this.activity = a;
-        }
-
-        @Override
-        protected Integer doInBackground(Void... params) {
-            try {
-                String url = "http://newzrobot.com:8090/newsCount";
-
-                RestTemplate restTemplate = new RestTemplate();
-                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
-                String result = restTemplate.getForObject(url, String.class);
-
-                return Integer.valueOf(result);
-            } catch (Exception e) {
-                Log.e("MainActivity", e.getMessage(), e);
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Integer count) {
-            EditText searchBox = (EditText) findViewById(R.id.search_box);
-            searchBox.setHint("Search through " + count.toString() + " news...");
-        }
-
-    }
-
-    //TODO: change name of this and move all classes to other files
-    public class GetUsernameTask extends AsyncTask<Void, Void, String> {
-        Activity mActivity;
-        String mScope;
-        String mEmail;
-        String temp;
-
-        GetUsernameTask(Activity activity, String name, String scope) {
-            this.mActivity = activity;
-            this.mScope = scope;
-            this.mEmail = name;
-        }
-
-        /**
-         * Executes the asynchronous job. This runs when you call execute()
-         * on the AsyncTask instance.
-         */
-        @Override
-        protected String doInBackground(Void... params) {
-            String token = null;
-            try {
-                try {
-                    token = fetchToken();
-                } catch (GoogleAuthException e) {
-                    e.printStackTrace();
-                }
-                if (token != null) {
-                    // **Insert the good stuff here.**
-                    // Use the token to access the user's Google data.
-                    temp = "12";
-                }
-            } catch (IOException e) {
-                // The fetchToken() method handles Google-specific exceptions,
-                // so this indicates something went wrong at a higher level.
-                // TIP: Check for network connectivity before starting the AsyncTask.
-            }
-            return token;
-        }
-
-        /**
-         * Gets an authentication token from Google and handles any
-         * GoogleAuthException that may occur.
-         */
-        protected String fetchToken() throws IOException, GoogleAuthException {
-            try {
-                String token = GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
-                this.mEmail = this.mEmail;
-                return token;
-            } catch (UserRecoverableAuthException e) {
-                // GooglePlayServices.apk is either old, disabled, or not present
-                // so we need to show the user some UI in the activity to recover.
-                //mActivity.handleException(userRecoverableException);
-                temp = "12";
-
-                //this will happen only on the first ever time this app requires
-                //authentication from user
-                startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
-                //String token2 = GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
-            } catch (GoogleAuthException fatalException) {
-                // Some other type of unrecoverable exception has occurred.
-                // Report and log the error as appropriate for your app.
-                temp = "12";
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String token) {
-            new RegisterUserTask(mActivity, token).execute();
-        }
-
-    }
 
 
-    //TODO: RegisterOrLogin user
-    private class RegisterUserTask extends AsyncTask<Void, Void, Void> {
 
-        private Activity activity;
-        private String token;
-        private String resString;
 
-        public RegisterUserTask(Activity a, String token)
-        {
-            this.activity = a;
-            this.token = token;
-        }
 
-        //TODO: start caching expensive data items
-        //TODO: change namespaces include intelmix on android and server
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                String url = "http://newzrobot.com:8090/register";
 
-                AuthRequest ar = new AuthRequest();
-                ar.setToken(this.token);
-
-                RestTemplate restTemplate = new RestTemplate();
-                restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
-
-                AuthResponse result = restTemplate.postForObject(url, ar, AuthResponse.class);
-                resString = result.getToken();
-            } catch (Exception e) {
-                resString = e.getMessage();
-
-            }
-
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            Toast.makeText(getApplicationContext(),
-                    resString, Toast.LENGTH_LONG)
-                    .show();
-
-            new HttpRequestTask((MainActivity)activity, null).execute();
-            new GetNewsCountTask((MainActivity)activity).execute();
-        }
-    }
 }

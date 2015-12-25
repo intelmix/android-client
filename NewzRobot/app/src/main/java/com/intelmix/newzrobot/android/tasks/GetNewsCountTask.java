@@ -1,4 +1,4 @@
-package newzrobot.com.newzrobot.tasks;
+package com.intelmix.newzrobot.android.tasks;
 
 import android.os.AsyncTask;
 import android.util.Log;
@@ -7,7 +7,7 @@ import android.widget.EditText;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
-import newzrobot.com.newzrobot.MainActivity;
+import com.intelmix.newzrobot.android.MainActivity;
 import newzrobot.com.newzrobot.R;
 
 /**
@@ -43,7 +43,6 @@ public class GetNewsCountTask extends AsyncTask<Void, Void, Integer> {
         EditText searchBox = (EditText) this.activity.findViewById(R.id.search_box);
         searchBox.setHint("Search through " + count.toString() + " news...");
     }
-
 }
 
 

@@ -1,4 +1,4 @@
-package newzrobot.com.newzrobot.data;
+package com.intelmix.newzrobot.android.data;
 
 /**
  * Created by mahdi on 12/8/15.
@@ -10,7 +10,6 @@ public class NewsItem {
     private long timestamp;
 
     public NewsItem() {
-
     }
 
     public NewsItem(String link, String title, String source, long timestamp) {

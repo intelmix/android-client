@@ -14,30 +14,31 @@ import newzrobot.com.newzrobot.data.AuthResponse;
 /**
  * Created by mahdi on 12/25/15.
  */
-public class AuthenticateUserTask extends AsyncTask<Void, Void, Void> {
+public class AuthenticateUserTask extends AsyncTask<Void, Void, String> {
 
-    private Activity activity;
+    private MainActivity activity;
     private String token;
     private String resString;
+    private static RestTemplate restTemplate = new RestTemplate();
 
-    public AuthenticateUserTask(Activity a, String token)
+    static {
+        restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
+    }
+
+    public AuthenticateUserTask(MainActivity a, String token)
     {
         this.activity = a;
         this.token = token;
     }
 
-    //TODO: start caching expensive data items
     //TODO: change namespaces include intelmix on android and server
     @Override
-    protected Void doInBackground(Void... params) {
+    protected String doInBackground(Void... params) {
         try {
             String url = "http://newzrobot.com:8090/auth";
 
             AuthRequest ar = new AuthRequest();
             ar.setToken(this.token);
-
-            RestTemplate restTemplate = new RestTemplate();
-            restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
 
             AuthResponse result = restTemplate.postForObject(url, ar, AuthResponse.class);
             resString = result.getToken();
@@ -46,16 +47,16 @@ public class AuthenticateUserTask extends AsyncTask<Void, Void, Void> {
 
         }
 
-        return null;
+        return resString;
     }
 
     @Override
-    protected void onPostExecute(Void aVoid) {
-        Toast.makeText(this.activity.getApplicationContext(),
+    protected void onPostExecute(String token) {
+        /*Toast.makeText(this.activity.getApplicationContext(),
                 resString, Toast.LENGTH_LONG)
-                .show();
+                .show();*/
 
-        new GetNewsTask((MainActivity)activity, null).execute();
-        new GetNewsCountTask((MainActivity)activity).execute();
+        //inform main activity that user is authenticated so news will be refreshed
+        this.activity.onUserAuthenticated(token);
     }
 }

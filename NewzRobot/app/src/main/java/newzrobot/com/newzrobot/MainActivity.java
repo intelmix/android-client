@@ -22,35 +22,36 @@ import android.widget.Toast;
 import com.google.android.gms.common.AccountPicker;
 
 
+import newzrobot.com.newzrobot.data.Common;
 import newzrobot.com.newzrobot.data.NewsItem;
 import newzrobot.com.newzrobot.tasks.*;
 
 public class MainActivity extends AppCompatActivity {
 
-    ListView listView;
     MainActivity me = null;
+
+    //token that authenticates user to the server, if null, request one using user's google account
+    private String userAuthToken = null;
+
+    public void onUserAuthenticated(String token) {
+        this.userAuthToken = token;
+        refreshNews();
+    }
+
+    private void refreshNews() {
+        if ( userAuthToken != null ) {
+            //get all news
+            new GetNewsTask(this, null).execute();
+            new GetNewsCountTask(this).execute();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        me = this;
 
-//        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-//        setSupportActionBar(toolbar);
-//
-        listView = (ListView) findViewById(R.id.list);
-//        NewsItem[] greeting = new NewsItem[3];
-//        greeting[0] = new NewsItem("A", "B", "C", 1);
-//        greeting[1] = new NewsItem("A1", "B1", "C1", 2);
-//        greeting[2] = new NewsItem("A2", "B2", "C2", 3);
-//
-//        MySimpleArrayAdapter adapter = new MySimpleArrayAdapter(this, greeting);
-//
-//        // Assign adapter to ListView
-//        listView.setAdapter(adapter);
-
-
+        final ListView listView = (ListView) this.findViewById(R.id.list);
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
@@ -68,13 +69,6 @@ public class MainActivity extends AppCompatActivity {
                 Intent i = new Intent(Intent.ACTION_VIEW);
                 i.setData(Uri.parse(link));
                 startActivity(i);
-//
-//                // Show Alert
-//                Toast.makeText(getApplicationContext(),
-//                        "Position :" + itemPosition + "  ListItem : " + itemValue.getLink(), Toast.LENGTH_LONG)
-//                        .show();
-
-
             }
 
         });
@@ -107,33 +101,31 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
-        //TODO: better UI handling upon start
-        pickUserAccount();
-
-
+        if ( userAuthToken == null ) {
+            pickUserAccount();
+        } else {
+            //if user has already been authenticated, just refresh the news
+            refreshNews();
+        }
     }
 
     String mEmail; // Received from newChooseAccountIntent(); passed to getToken()
-    //String SCOPE = "oauth2:https://www.googleapis.com/auth/userinfo.profile";
-    String SCOPE = "oauth2:https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email";
-    public static final String MyPREFERENCES = "MyPrefs" ;
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_CODE_PICK_ACCOUNT) {
+        if (requestCode == Common.REQUEST_CODE_PICK_ACCOUNT) {
             // Receiving a result from the AccountPicker
             if (resultCode == RESULT_OK) {
                 mEmail = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME);
 
-                SharedPreferences prefs = this.getSharedPreferences(MyPREFERENCES, Context.MODE_PRIVATE);
+                SharedPreferences prefs = this.getSharedPreferences(Common.MyPREFERENCES, Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = prefs.edit();
                 editor.putString("default_account", mEmail);
                 editor.commit();
 
                 // With the account name acquired, go get the auth token
-                getUsername();
-
-                //new GetNewsTask(this, null).execute();
+                getUserToken();
             } else if (resultCode == RESULT_CANCELED) {
                 // The account picker dialog closed without selecting an account.
                 // Notify users that they must pick an account to proceed.
@@ -141,12 +133,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        if ( requestCode == REQUEST_AUTHORIZATION ) {
-            String x = data.getDataString();
-
+        if ( requestCode == Common.REQUEST_AUTHORIZATION ) {
             //again try to get the access token now that app is authorized by the user
-            new GetUserTokenTask(MainActivity.this, mEmail, SCOPE).execute();
-            //String token = GoogleAuthUtil.getToken(this, mEmail, SCOPE);
+            new GetUserTokenTask(MainActivity.this, mEmail, Common.SCOPE).execute();
 
         }
     }
@@ -167,40 +156,31 @@ public class MainActivity extends AppCompatActivity {
      * If the account is not yet known, invoke the picker. Once the account is known,
      * start an instance of the AsyncTask to get the auth token and do work with it.
      */
-    //TOTO: Get user token
-    private void getUsername() {
-        if (mEmail == null) {
-            pickUserAccount();
+    private void getUserToken() {
+        if (isDeviceOnline()) {
+            new GetUserTokenTask(MainActivity.this, mEmail, Common.SCOPE).execute();
         } else {
-            if (isDeviceOnline()) {
-                new GetUserTokenTask(MainActivity.this, mEmail, SCOPE).execute();
-            } else {
-                Toast.makeText(this, "R.string.not_online", Toast.LENGTH_LONG).show();
-            }
+            Toast.makeText(this, "R.string.not_online", Toast.LENGTH_LONG).show();
         }
     }
 
-    public static final int REQUEST_CODE_PICK_ACCOUNT = 1000;
-    public static final int REQUEST_AUTHORIZATION = 12121;
 
     private void pickUserAccount() {
-        String[] accountTypes = new String[]{"com.google"};
-        Intent intent = AccountPicker.newChooseAccountIntent(null, null,
-                accountTypes, false, null, null, null, null);
-
-        intent.addCategory("android.intent.category.DEFAULT");
-
-        SharedPreferences prefs = this.getSharedPreferences(MyPREFERENCES, Context.MODE_PRIVATE);
+        SharedPreferences prefs = this.getSharedPreferences(Common.MyPREFERENCES, Context.MODE_PRIVATE);
         String defaultAccount = prefs.getString("default_account", null);
 
         if ( defaultAccount == null ) {
-            startActivityForResult(intent, REQUEST_CODE_PICK_ACCOUNT);
+            String[] accountTypes = new String[]{"com.google"};
+            Intent intent = AccountPicker.newChooseAccountIntent(null, null,
+                    accountTypes, false, null, null, null, null);
+
+            intent.addCategory("android.intent.category.DEFAULT");
+
+            startActivityForResult(intent, Common.REQUEST_CODE_PICK_ACCOUNT);
         } else {
             mEmail = defaultAccount;
-            getUsername();
+            getUserToken();
         }
-
-
     }
 
     @Override
@@ -224,12 +204,4 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
-
-
-
-
-
-
-
-
 }

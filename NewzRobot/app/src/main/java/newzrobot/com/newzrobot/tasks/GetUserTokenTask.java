@@ -10,18 +10,21 @@ import com.google.android.gms.auth.UserRecoverableAuthException;
 import java.io.IOException;
 
 import newzrobot.com.newzrobot.MainActivity;
+import newzrobot.com.newzrobot.data.Common;
 
 /**
  * Created by mahdi on 12/25/15.
  */
 //TODO: change name of this and move all classes to other files
 public class GetUserTokenTask extends AsyncTask<Void, Void, String> {
-    Activity mActivity;
+    MainActivity mActivity;
     String mScope;
     String mEmail;
     String temp;
 
-    public GetUserTokenTask(Activity activity, String name, String scope) {
+    static String googleToken = null;
+
+    public GetUserTokenTask(MainActivity activity, String name, String scope) {
         this.mActivity = activity;
         this.mScope = scope;
         this.mEmail = name;
@@ -58,9 +61,11 @@ public class GetUserTokenTask extends AsyncTask<Void, Void, String> {
      * GoogleAuthException that may occur.
      */
     protected String fetchToken() throws IOException, GoogleAuthException {
+        if ( googleToken != null ) return googleToken;
+
         try {
             String token = GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
-            this.mEmail = this.mEmail;
+            googleToken = token;
             return token;
         } catch (UserRecoverableAuthException e) {
             // GooglePlayServices.apk is either old, disabled, or not present
@@ -70,7 +75,7 @@ public class GetUserTokenTask extends AsyncTask<Void, Void, String> {
 
             //this will happen only on the first ever time this app requires
             //authentication from user
-            this.mActivity.startActivityForResult(e.getIntent(), MainActivity.REQUEST_AUTHORIZATION);
+            this.mActivity.startActivityForResult(e.getIntent(), Common.REQUEST_AUTHORIZATION);
             //String token2 = GoogleAuthUtil.getToken(mActivity, mEmail, mScope);
         } catch (GoogleAuthException fatalException) {
             // Some other type of unrecoverable exception has occurred.
@@ -84,5 +89,4 @@ public class GetUserTokenTask extends AsyncTask<Void, Void, String> {
     protected void onPostExecute(String token) {
         new AuthenticateUserTask(mActivity, token).execute();
     }
-
 }

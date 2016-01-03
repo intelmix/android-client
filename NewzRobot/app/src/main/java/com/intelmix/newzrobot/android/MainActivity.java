@@ -32,11 +32,14 @@ public class MainActivity extends AppCompatActivity {
     //token that authenticates user to the server, if null, request one using user's google account
     private static String userAuthToken = null;
 
+    //This is called after is authenticated successfully.
+    //Given token will be used later to authenticate future web-service calls
     public void onUserAuthenticated(String token) {
         this.userAuthToken = token;
         refreshNews();
     }
 
+    //re-read news from server
     private void refreshNews() {
         if ( userAuthToken != null ) {
             //get all news
@@ -56,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         setupSearchBox();
     }
 
+    ///Initialize the textbox in the main screen for search of the news
     private void setupSearchBox() {
         EditText searchBox = (EditText) findViewById(R.id.search_box);
         final MainActivity parentActivity = this;
